@@ -1,22 +1,4 @@
-# Android Studios
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-
-# Platform IO
-.pioenvs
-.piolibdeps
-.clang_complete
-.gcc-flags.json
-.pio
+# Directories
+Target_Practice_System - Slave Controllers ESP32
+Target_System_Master_Contoller - Master Controller Raspberry Pi
+TargetPracticeSystemController - Andorid Application
