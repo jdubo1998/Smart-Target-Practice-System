@@ -1,0 +1,207 @@
+package com.github.jdubo1998.targetpracticesystemcontroller;
+
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattServer;
+import android.bluetooth.BluetoothGattServerCallback;
+import android.bluetooth.BluetoothGattService;
+import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothProfile;
+import android.bluetooth.le.AdvertiseCallback;
+import android.bluetooth.le.AdvertiseData;
+import android.bluetooth.le.AdvertiseSettings;
+import android.bluetooth.le.BluetoothLeAdvertiser;
+import android.bluetooth.le.BluetoothLeScanner;
+import android.content.Context;
+import android.content.pm.PackageManager;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.ParcelUuid;
+import android.util.Log;
+import android.widget.Toast;
+
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
+
+public class RunSessionActivity extends AppCompatActivity {
+    private static final String TAG = RunSessionActivity.class.getSimpleName();
+    private BluetoothManager mBluetoothManager;
+    private BluetoothGattServer mServer;
+    private BluetoothGattService mService;
+    private BluetoothGattCharacteristic mCharacteristic;
+//    private BluetoothDevice mMasterController;
+    private BluetoothLeAdvertiser mBLEAdvertiser;
+    public static final UUID SERVICE_UUID = UUID.fromString("00002a0f-0000-1000-8000-00805f9b34fb");
+
+    private BluetoothLeScanner mBluetoothLEScanner;
+
+    private BluetoothAdapter mBluetoothAdapter;
+    private Handler mHandler;
+
+    private String mCode;
+
+    private AdvertiseCallback mAdvertiseCallback = new AdvertiseCallback() {
+        @Override
+        public void onStartSuccess(AdvertiseSettings settingsInEffect) {
+            Log.d(TAG, "Advertising started.");
+        }
+
+        @Override
+        public void onStartFailure(int errorCode) {
+            Log.e(TAG, "Could not start advertising. CODE: " + errorCode);
+        }
+    };
+
+    private BluetoothGattServerCallback mBLEServerCallback = new BluetoothGattServerCallback() {
+        @Override
+        public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
+            Log.d(TAG, device.getName());
+
+            String[] state = {"disconnected", "connecting", "connected", "disconnecting"};
+            Log.d(TAG, state[status]);
+        }
+
+        @Override
+        public void onCharacteristicWriteRequest(BluetoothDevice device, int requestId, BluetoothGattCharacteristic characteristic, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
+        }
+
+        @Override
+        public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattCharacteristic characteristic) {
+        }
+    };
+
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.run_session_layout);
+        mCode = getIntent().getStringExtra("code");
+
+        /* Determines if device can use BLE. */
+        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+            Log.e(TAG, "BLE not supported.");
+            Toast.makeText(this, "BLE not supported.", Toast.LENGTH_SHORT).show(); // TODO: Use string resource
+            finish();
+        }
+
+        mBluetoothManager = (BluetoothManager) this.getSystemService(Context.BLUETOOTH_SERVICE);
+        assert mBluetoothManager != null;
+        mServer = mBluetoothManager.openGattServer(this, mBLEServerCallback);
+
+        if (mServer != null) {
+            mService = new BluetoothGattService(SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY);
+            int property = BluetoothGattCharacteristic.PROPERTY_READ | BluetoothGattCharacteristic.PROPERTY_WRITE;
+            int permission = BluetoothGattCharacteristic.PERMISSION_READ | BluetoothGattCharacteristic.PERMISSION_WRITE;
+            mCharacteristic = new BluetoothGattCharacteristic(SERVICE_UUID, property, permission);
+
+            mService.addCharacteristic(mCharacteristic);
+            mServer.addService(mService);
+        } else {
+            Toast.makeText(this, "Could not create BLE server.", Toast.LENGTH_SHORT).show(); // TODO: Use string resource
+            finish();
+//            notifyCharacteristicChanged(BluetoothDevice device, BluetoothGattCharacteristic characteristic, boolean confirm)
+        }
+
+        mBluetoothAdapter = mBluetoothManager.getAdapter();
+        mBLEAdvertiser = mBluetoothAdapter.getBluetoothLeAdvertiser();
+
+        AdvertiseSettings advertiseSettings = new AdvertiseSettings.Builder()
+                        .setConnectable(true)
+                        .setTimeout(15000).build();
+
+        AdvertiseData advertiseData = new AdvertiseData.Builder()
+                        .setIncludeTxPowerLevel(false)
+                        .setIncludeDeviceName(false)
+                        .build();
+
+        AdvertiseData scanResponseData = new AdvertiseData.Builder()
+                        .setIncludeTxPowerLevel(true)
+                        .setIncludeDeviceName(true)
+                        .addServiceData(new ParcelUuid(SERVICE_UUID), "STPS_MAPP".getBytes(StandardCharsets.UTF_8))
+                        .build();
+
+        if (mBLEAdvertiser != null) {
+            mBLEAdvertiser.startAdvertising(advertiseSettings, advertiseData, scanResponseData, mAdvertiseCallback);
+        } else {
+            Toast.makeText(this, "Could not advertise BLE.", Toast.LENGTH_SHORT).show(); // TODO: Use string resource
+            finish();
+        }
+
+//        mHandler = new Handler();
+//
+//        final BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
+//        assert bluetoothManager != null;
+//        mBluetoothAdapter = bluetoothManager.getAdapter();
+//
+//        mBluetoothAdapter.disable();
+//        if (mBluetoothAdapter.getState() == BluetoothAdapter.STATE_OFF) {
+////            Log.d(TAG, "Bluetooth adapter turned off.");
+//
+//            mHandler.postDelayed(new Runnable() {
+//                @Override
+//                public void run() {
+////                    Log.d(TAG, "Trying to start bluetooth adapter.");
+//                    mBluetoothAdapter.enable();
+//                }}, 500);
+//        }
+//
+//        mBluetoothLEScanner = mBluetoothAdapter.getBluetoothLeScanner();
+//
+//        if (mBluetoothLEScanner == null) {
+//            // TODO: Use String resource.
+//            Log.e(TAG, "Bluetooth adapter couldn't turn on.");
+//            Toast.makeText(this, "Bluetooth adapter couldn't turn on.", Toast.LENGTH_SHORT).show();
+//            finish();
+//        } else {
+//            mBluetoothLEScanner.startScan(mScanCallback);
+//        }
+    }
+
+//    private ScanCallback mScanCallback = new ScanCallback() {
+//        @Override
+//        public void onScanFailed(int errorCode) {
+//            Log.d(TAG, "BLE scan failed. CODE: " + errorCode);
+//        }
+//
+//        @Override
+//        public void onScanResult(int callbackType, ScanResult result) {
+//            if (result.getDevice().getName() != null) {
+//                if (result.getDevice().getName().contains("STPS_MC_")) {
+//                    String msg = "Found " + result.getDevice().getName() + " at address " + result.getDevice().getAddress();
+//                    Toast.makeText(RunSessionActivity.this, msg, Toast.LENGTH_SHORT).show();
+//                    Log.d(TAG, msg);
+//
+//                    mMasterController = result.getDevice();
+//                    mMasterController.connectGatt(RunSessionActivity.this, true, mBluetoothGattCallback);
+//                }
+//            }
+//        }
+//    };
+
+//    private BluetoothGattCallback mBluetoothGattCallback = new BluetoothGattCallback() {
+//        @Override
+//        public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+//            Log.d(TAG, "Read: characteristic: " + characteristic.getStringValue(0));
+//        }
+//
+//        @Override
+//        public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+//            Log.d(TAG, "Write: characteristic: " + characteristic.getStringValue(0));
+//        }
+//
+//        @Override
+//        public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+//            Log.d(TAG, "Changed: characteristic: " + characteristic.getStringValue(0));
+//        }
+//    };
+
+    @Override
+    protected void onStop() {
+        Log.d(TAG, "STOPPED");
+        mServer.clearServices();
+        mServer.close();
+        super.onStop();
+    }
+}

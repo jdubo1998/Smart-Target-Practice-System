@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Target Practice System Controller</string>
+    <string name="seconds_unit">Sec</string>
+
+<!--    <string-array name="modes">-->
+<!--        <item>Set Order</item>-->
+<!--        <item>Time Interval</item>-->
+<!--        <item>Synchronized</item>-->
+<!--    </string-array>-->
+
+    <string-array name="end_methods">
+        <item>Time Limit</item>
+        <item>Target Limit</item>
+    </string-array>
+</resources>
